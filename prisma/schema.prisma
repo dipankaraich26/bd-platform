@@ -1,0 +1,218 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  USER
+  VIEWER
+}
+
+enum Sector {
+  DEFENCE
+  MEDICAL
+  AUTOMOTIVE
+  CLIMATE_CONTROL
+  ELECTRONICS
+  TECHNOLOGY
+  OTHER
+}
+
+enum BusinessStage {
+  IDEA
+  EXPLORING
+  PROPOSAL
+  NEGOTIATION
+  ACTIVE
+  ON_HOLD
+  WON
+  LOST
+}
+
+enum ProductNature {
+  ELECTRONIC
+  MECHANICAL
+  ELECTRO_MECHANICAL
+  SOFTWARE
+  SYSTEM_INTEGRATION
+  HYBRID
+}
+
+enum ProjectType {
+  PROJECT
+  PROGRAM
+  PRODUCT
+  SOLUTION
+  POC
+  PILOT
+}
+
+enum ProjectStatus {
+  CONCEPT
+  PROPOSAL
+  DEVELOPMENT
+  TESTING
+  DEPLOYED
+  ON_HOLD
+  CANCELLED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+}
+
+enum FeedbackSentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  REQUIREMENT
+}
+
+// ─── USERS ────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(USER)
+  avatar       String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  businesses Business[]
+  activities ActivityLog[]
+
+  @@map("users")
+}
+
+// ─── BUSINESSES ───────────────────────────────────────────────────────────────
+
+model Business {
+  id             String        @id @default(cuid())
+  name           String
+  description    String?       @db.Text
+  sector         Sector
+  category       String        // Sector-specific sub-category (e.g. RADAR, DRONE, RESPIRATORY)
+  productNature  ProductNature @default(ELECTRONIC) @map("product_nature")
+  stage          BusinessStage @default(IDEA)
+  score          Int           @default(0) // 0-100 opportunity score
+  priority       String        @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  targetCustomer String?       @map("target_customer")
+  targetMarket   String?       @map("target_market")
+  estimatedValue Decimal?      @db.Decimal(15, 2) @map("estimated_value")
+  currency       String        @default("INR")
+  startDate      DateTime?     @map("start_date")
+  targetDate     DateTime?     @map("target_date")
+  ownerId        String?       @map("owner_id")
+  owner          User?         @relation(fields: [ownerId], references: [id])
+  parentId       String?       @map("parent_id")
+  parent         Business?     @relation("SubBusinesses", fields: [parentId], references: [id])
+  children       Business[]    @relation("SubBusinesses")
+  notes          String?       @db.Text
+  tags           Json          @default("[]")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  projects   Project[]
+  feedbacks  CustomerFeedback[]
+  milestones Milestone[]
+  activities ActivityLog[]
+
+  @@map("businesses")
+}
+
+// ─── PROJECTS / PRODUCTS / SOLUTIONS ─────────────────────────────────────────
+
+model Project {
+  id              String        @id @default(cuid())
+  name            String
+  description     String?       @db.Text
+  businessId      String        @map("business_id")
+  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type            ProjectType   @default(PROJECT)
+  productNature   ProductNature @default(ELECTRONIC) @map("product_nature")
+  status          ProjectStatus @default(CONCEPT)
+  score           Int           @default(0)
+  progress        Int           @default(0) // 0-100 percent
+  startDate       DateTime?     @map("start_date")
+  endDate         DateTime?     @map("end_date")
+  budget          Decimal?      @db.Decimal(15, 2)
+  customer        String?
+  customerContact String?       @map("customer_contact")
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  feedbacks  CustomerFeedback[]
+  milestones Milestone[]
+
+  @@map("projects")
+}
+
+// ─── CUSTOMER FEEDBACK ────────────────────────────────────────────────────────
+
+model CustomerFeedback {
+  id           String            @id @default(cuid())
+  businessId   String?           @map("business_id")
+  business     Business?         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  projectId    String?           @map("project_id")
+  project      Project?          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  customerName String            @map("customer_name")
+  customerOrg  String?           @map("customer_org")
+  sentiment    FeedbackSentiment @default(NEUTRAL)
+  rating       Int?              // 1-5
+  feedback     String            @db.Text
+  date         DateTime          @default(now())
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  @@map("customer_feedbacks")
+}
+
+// ─── MILESTONES ───────────────────────────────────────────────────────────────
+
+model Milestone {
+  id          String          @id @default(cuid())
+  businessId  String?         @map("business_id")
+  business    Business?       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  projectId   String?         @map("project_id")
+  project     Project?        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  dueDate     DateTime        @map("due_date")
+  status      MilestoneStatus @default(PENDING)
+  completedAt DateTime?       @map("completed_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  @@map("milestones")
+}
+
+// ─── ACTIVITY LOG ─────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id          String    @id @default(cuid())
+  businessId  String?   @map("business_id")
+  business    Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId      String?   @map("user_id")
+  user        User?     @relation(fields: [userId], references: [id])
+  action      String
+  description String?
+  metadata    Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("activity_logs")
+}

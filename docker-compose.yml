@@ -1,0 +1,56 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: bd_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: bd_password
+      MYSQL_DATABASE: bd_db
+      MYSQL_USER: bd_user
+      MYSQL_PASSWORD: bd_password
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bd_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql://bd_user:bd_password@mysql:3306/bd_db
+      JWT_SECRET: bd_jwt_secret_change_in_production
+      JWT_EXPIRES_IN: 7d
+      PORT: 4000
+      NODE_ENV: production
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - '4000:4000'
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bd_frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

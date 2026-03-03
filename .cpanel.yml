@@ -1,0 +1,27 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/erpsolution26/public_html/business-development.erpsolution26.com
+    - export NODE=/opt/alt/alt-nodejs20/root/usr/bin/node
+    - export NPM=/opt/alt/alt-nodejs20/root/usr/bin/npm
+    - echo "=== Deploying BD Platform $(date) ==="
+    - /bin/cp -f server.js $DEPLOYPATH/
+    - /bin/cp -f app.js $DEPLOYPATH/
+    - /bin/cp -f package.json $DEPLOYPATH/
+    - /bin/cp -rf prisma $DEPLOYPATH/
+    - /bin/cp -rf backend/src $DEPLOYPATH/backend/src/
+    - /bin/cp -f backend/package.json $DEPLOYPATH/backend/
+    - /bin/cp -f backend/tsconfig.json $DEPLOYPATH/backend/
+    - /bin/cp -rf frontend/src $DEPLOYPATH/frontend/src/ 2>/dev/null || true
+    - /bin/cp -rf frontend/app $DEPLOYPATH/frontend/app/ 2>/dev/null || true
+    - /bin/cp -rf frontend/components $DEPLOYPATH/frontend/components/
+    - /bin/cp -rf frontend/lib $DEPLOYPATH/frontend/lib/
+    - /bin/cp -rf frontend/public $DEPLOYPATH/frontend/public/ 2>/dev/null || true
+    - /bin/cp -f frontend/package.json $DEPLOYPATH/frontend/
+    - /bin/cp -f frontend/next.config.js $DEPLOYPATH/frontend/
+    - /bin/cp -f frontend/tailwind.config.ts $DEPLOYPATH/frontend/
+    - /bin/cp -f frontend/tsconfig.json $DEPLOYPATH/frontend/
+    - /bin/cp -f frontend/postcss.config.js $DEPLOYPATH/frontend/ 2>/dev/null || true
+    - mkdir -p $DEPLOYPATH/tmp
+    - touch $DEPLOYPATH/tmp/restart.txt
+    - echo "=== Deploy complete $(date) ==="
