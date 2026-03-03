@@ -10,6 +10,7 @@ deployment:
     - /bin/cp -rf backend/dist $DEPLOYPATH/backend/
     - /bin/cp -f backend/package.json $DEPLOYPATH/backend/
     - mkdir -p $DEPLOYPATH/frontend
+    - rm -rf $DEPLOYPATH/frontend/.next
     - /bin/cp -rf frontend/.next $DEPLOYPATH/frontend/
     - /bin/cp -rf frontend/components $DEPLOYPATH/frontend/
     - /bin/cp -rf frontend/lib $DEPLOYPATH/frontend/
