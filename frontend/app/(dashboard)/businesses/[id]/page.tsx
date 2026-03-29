@@ -12,9 +12,10 @@ import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import {
   ArrowLeft, Edit, Plus, Trash2, Building2, FolderKanban, MessageSquare,
   Calendar, Activity, ExternalLink, Loader2, Star, ChevronDown, ChevronRight,
+  Paperclip, FileText, Image, File, Download,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'sub-businesses' | 'projects' | 'feedback' | 'milestones' | 'activity';
+type Tab = 'overview' | 'sub-businesses' | 'projects' | 'feedback' | 'milestones' | 'attachments' | 'activity';
 
 function ScoreMeter({ score }: { score: number }) {
   return (
@@ -45,6 +46,8 @@ export default function BusinessDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
+  const [attachments, setAttachments] = useState<any[]>([]);
+
   // New project form state
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
@@ -68,8 +71,12 @@ export default function BusinessDetailPage() {
   async function loadBusiness() {
     setLoading(true);
     try {
-      const r = await api.get(`/businesses/${id}`);
-      setBusiness(r.data);
+      const [bizRes, attRes] = await Promise.all([
+        api.get(`/businesses/${id}`),
+        api.get(`/attachments/${id}`),
+      ]);
+      setBusiness(bizRes.data);
+      setAttachments(attRes.data);
     } catch {
       router.push('/businesses');
     } finally {
@@ -130,6 +137,7 @@ export default function BusinessDetailPage() {
     { key: 'projects', label: 'Projects', count: business.projects?.length },
     { key: 'feedback', label: 'Customer Feedback', count: business.feedbacks?.length },
     { key: 'milestones', label: 'Milestones', count: business.milestones?.length },
+    { key: 'attachments', label: 'Attachments', count: attachments?.length },
     { key: 'activity', label: 'Activity Log', count: business.activities?.length },
   ];
 
@@ -613,6 +621,76 @@ export default function BusinessDetailPage() {
                 </div>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {/* ── ATTACHMENTS TAB ──────────────────────────────────────────────── */}
+      {activeTab === 'attachments' && (
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Link
+              href={`/businesses/${id}/edit`}
+              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
+            >
+              <Plus className="w-4 h-4" /> Upload Files
+            </Link>
+          </div>
+
+          {attachments.length === 0 ? (
+            <div className="bg-white rounded-xl border p-12 text-center">
+              <Paperclip className="w-10 h-10 text-gray-200 mx-auto mb-2" />
+              <p className="text-gray-500">No attachments yet</p>
+              <p className="text-sm text-gray-400 mt-1">Go to edit page to upload files</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {attachments.map((att: any) => {
+                const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '';
+                const isImage = att.mimeType?.startsWith('image/');
+                return (
+                  <div key={att.id} className="bg-white rounded-xl border p-4 hover:border-indigo-200 transition-colors">
+                    <div className="flex items-start gap-3">
+                      {isImage ? (
+                        <img
+                          src={`${apiBase}/uploads/${att.filename}`}
+                          alt={att.originalName}
+                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                          {att.mimeType?.includes('pdf') ? <FileText className="w-6 h-6 text-red-500" /> : <File className="w-6 h-6 text-gray-400" />}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <a
+                          href={`${apiBase}/uploads/${att.filename}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-indigo-600 hover:underline truncate block"
+                        >
+                          {att.originalName}
+                        </a>
+                        {att.description && <p className="text-xs text-gray-500 mt-0.5">{att.description}</p>}
+                        <p className="text-xs text-gray-400 mt-1">
+                          {att.size < 1024 * 1024 ? (att.size / 1024).toFixed(1) + ' KB' : (att.size / (1024 * 1024)).toFixed(1) + ' MB'}
+                          {' · '}
+                          {new Date(att.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <a
+                        href={`${apiBase}/uploads/${att.filename}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 text-gray-400 hover:text-indigo-600"
+                      >
+                        <Download className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

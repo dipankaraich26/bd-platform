@@ -81,6 +81,35 @@ enum FeedbackSentiment {
   REQUIREMENT
 }
 
+enum LeadSource {
+  REFERRAL
+  EXHIBITION
+  WEBSITE
+  COLD_CALL
+  RFP_PORTAL
+  GOVERNMENT_TENDER
+  PARTNER
+  SOCIAL_MEDIA
+  OTHER
+}
+
+enum LeadTemperature {
+  COLD
+  WARM
+  HOT
+}
+
+enum InteractionType {
+  CALL
+  EMAIL
+  MEETING
+  SITE_VISIT
+  VIDEO_CALL
+  DEMO
+  PRESENTATION
+  OTHER
+}
+
 // ─── USERS ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -96,6 +125,7 @@ model User {
 
   businesses Business[]
   activities ActivityLog[]
+  leads      Lead[]
 
   @@map("users")
 }
@@ -128,12 +158,31 @@ model Business {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  projects   Project[]
-  feedbacks  CustomerFeedback[]
-  milestones Milestone[]
-  activities ActivityLog[]
+  projects          Project[]
+  feedbacks         CustomerFeedback[]
+  milestones        Milestone[]
+  activities        ActivityLog[]
+  attachments       Attachment[]
+  convertedFromLead Lead?
 
   @@map("businesses")
+}
+
+// ─── ATTACHMENTS ──────────────────────────────────────────────────────────────
+
+model Attachment {
+  id          String   @id @default(cuid())
+  businessId  String   @map("business_id")
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  filename    String
+  originalName String  @map("original_name")
+  mimeType    String   @map("mime_type")
+  size        Int
+  description String?  @db.Text
+  uploadedBy  String?  @map("uploaded_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("attachments")
 }
 
 // ─── PROJECTS / PRODUCTS / SOLUTIONS ─────────────────────────────────────────
@@ -215,4 +264,93 @@ model ActivityLog {
   createdAt   DateTime  @default(now()) @map("created_at")
 
   @@map("activity_logs")
+}
+
+// ─── CRM: LEADS ──────────────────────────────────────────────────────────────
+
+model Lead {
+  id                  String          @id @default(cuid())
+  title               String
+  description         String?         @db.Text
+  sector              Sector
+  category            String
+  source              LeadSource      @default(OTHER)
+  temperature         LeadTemperature @default(COLD)
+  stage               String          // sector-specific, validated in app layer
+  estimatedValue      Decimal?        @db.Decimal(15, 2) @map("estimated_value")
+  currency            String          @default("INR")
+  priority            String          @default("MEDIUM")
+  companyName         String?         @map("company_name")
+  expectedCloseDate   DateTime?       @map("expected_close_date")
+  ownerId             String?         @map("owner_id")
+  owner               User?           @relation(fields: [ownerId], references: [id])
+  convertedBusinessId String?         @unique @map("converted_business_id")
+  convertedBusiness   Business?       @relation(fields: [convertedBusinessId], references: [id])
+  notes               String?         @db.Text
+  tags                Json            @default("[]")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  contacts     LeadContact[]
+  interactions Interaction[]
+
+  @@map("leads")
+}
+
+// ─── CRM: CONTACTS ───────────────────────────────────────────────────────────
+
+model Contact {
+  id           String   @id @default(cuid())
+  name         String
+  email        String?
+  phone        String?
+  designation  String?
+  organization String?
+  department   String?
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  leads        LeadContact[]
+  interactions Interaction[]
+
+  @@map("contacts")
+}
+
+// ─── CRM: LEAD-CONTACT JOIN ──────────────────────────────────────────────────
+
+model LeadContact {
+  id        String   @id @default(cuid())
+  leadId    String   @map("lead_id")
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contactId String   @map("contact_id")
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  role      String?
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([leadId, contactId])
+  @@map("lead_contacts")
+}
+
+// ─── CRM: INTERACTIONS ───────────────────────────────────────────────────────
+
+model Interaction {
+  id             String          @id @default(cuid())
+  leadId         String?         @map("lead_id")
+  lead           Lead?           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contactId      String?         @map("contact_id")
+  contact        Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  type           InteractionType @default(OTHER)
+  subject        String
+  description    String?         @db.Text
+  date           DateTime        @default(now())
+  duration       Int?
+  outcome        String?
+  nextAction     String?         @map("next_action")
+  nextActionDate DateTime?       @map("next_action_date")
+  userId         String?         @map("user_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  @@map("interactions")
 }

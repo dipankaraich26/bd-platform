@@ -52,6 +52,10 @@ nextApp.prepare().then(() => {
   server.use('/api/feedback',   require(path.join(backendDist, 'routes', 'feedback.routes')).default);
   server.use('/api/milestones', require(path.join(backendDist, 'routes', 'milestones.routes')).default);
   server.use('/api/stats',      require(path.join(backendDist, 'routes', 'stats.routes')).default);
+  server.use('/api/attachments', require(path.join(backendDist, 'routes', 'attachments.routes')).default);
+
+  // Static uploads
+  server.use('/uploads', express.static(path.join(__dirname, 'backend', 'uploads')));
 
   // Backend error handler
   server.use(require(path.join(backendDist, 'middleware', 'error.middleware')).errorHandler);
