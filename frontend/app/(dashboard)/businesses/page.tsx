@@ -9,7 +9,7 @@ import {
   formatCategoryLabel, scoreColor, scoreBg,
 } from '@/lib/sector-config';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Plus, Search, Filter, ChevronRight, Loader2, Building2 } from 'lucide-react';
+import { Plus, Search, Filter, ChevronRight, Loader2, Building2, Pencil } from 'lucide-react';
 
 function BusinessesContent() {
   const searchParams = useSearchParams();
@@ -202,7 +202,20 @@ function BusinessesContent() {
                     {b.targetDate && (
                       <p className="text-xs text-gray-400 mt-0.5">Target: {formatDate(b.targetDate)}</p>
                     )}
-                    <ChevronRight className="w-4 h-4 text-gray-300 ml-auto mt-1" />
+                    <div className="flex items-center gap-2 mt-1 justify-end">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          router.push(`/businesses/${b.id}/edit`);
+                        }}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        title="Edit"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
                   </div>
                 </div>
               </Link>
